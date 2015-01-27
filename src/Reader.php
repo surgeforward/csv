@@ -85,6 +85,48 @@ class Reader extends AbstractCsv
     }
 
     /**
+     * Apply a callback function on the CSV using associative keys
+     *
+     * The callback function must return TRUE in order to continue
+     * iterating over the iterator.
+     *
+     * @param callable $callable The callback function
+     * @param array|int $offset_or_keys the name for each key member OR the row Index to be
+     *                                  used as the associated named keys
+     *
+     * @return int the iteration count
+     */
+    public function eachAssoc(callable $callable, $offset_or_keys = 0)
+    {
+        $index = 0;
+        $iterator = $this->query();
+
+        $keys = $this->getAssocKeys($offset_or_keys);
+        $iterator = new MapIterator($iterator, function ($row) use ($keys) {
+            return static::combineArray($keys, $row);
+        });
+
+        $iterator->rewind();
+
+        // skip over the row we used as our column name row
+        if ($offset_or_keys === $iterator->key()) {
+            $iterator->next();
+        }
+
+        while ($iterator->valid() && true === $callable($iterator->current(), $iterator->key(), $iterator)) {
+            // skip over the row we used as our column name row
+            if ($offset_or_keys === $iterator->key()) {
+                $iterator->next();
+            }
+
+            ++$index;
+            $iterator->next();
+        }
+
+        return $index;
+    }
+
+    /**
      * Return a single column from the CSV data
      *
      * The callable function will be applied to each value to be return
